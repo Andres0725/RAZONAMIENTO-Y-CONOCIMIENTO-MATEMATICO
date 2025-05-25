@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Simulador de examen de admisión</title>
+
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:1rem;background:#f8f9fa;}
+    h1{margin-top:0}
+    .hidden{display:none}
+    .question-card{background:#fff;padding:1rem;margin-bottom:1rem;border-radius:8px;
+                   box-shadow:0 2px 4px rgba(0,0,0,.1);}
+    button{padding:.5rem 1rem;border:none;border-radius:4px;cursor:pointer}
+    .primary{background:#0d6efd;color:#fff}
+    #timer{font-size:1.25rem;font-weight:bold;margin:1rem 0}
+    #results{padding:1rem;background:#e9ecef;border-radius:8px}
+  </style>
+</head>
+
+<body>
+  <h1>Simulador de examen de admisión universitaria</h1>
+
+  <div id="timer"></div>
+
+  <form id="examForm"></form>
+
+  <button id="submitBtn" class="primary">Enviar examen</button>
+
+  <section id="results" class="hidden"></section>
+
+  <script>
+    /* ================= CONFIGURACIÓN ================ */
+    const EXAM_DURATION_MINUTES = 60;          // 1 hora
+    const questions = [
+      {
+        text: "¿Cuál es la capital de Francia?",
+        options: ["Madrid", "París", "Roma", "Lisboa"],
+        answer: 1
+      },
+      {
+        text: "¿Cuánto es 7 × 8?",
+        options: ["54", "56", "64", "58"],
+        answer: 1
+      },
+      {
+        text: "La mitosis produce:",
+        options: [
+          "Cuatro células hijas haploides",
+          "Dos células hijas diploides",
+          "Varias células poliploides",
+          "Una sola célula hija diploide"
+        ],
+        answer: 1
+      }
+      // 👉 Añade aquí 27 preguntas más con el mismo formato
+    ];
+    /* ============ FIN CONFIGURACIÓN ================= */
+
+    const examForm  = document.getElementById("examForm");
+    const timerEl   = document.getElementById("timer");
+    const resultsEl = document.getElementById("results");
+    const submitBtn = document.getElementById("submitBtn");
+
+    /* ---------- Renderizado dinámico del examen ---------- */
+    function renderExam() {
+      questions.forEach((q, idx) => {
+        const card = document.createElement("div");
+        card.className = "question-card";
+
+        card.innerHTML = `<h3>Pregunta ${idx + 1}</h3><p>${q.text}</p>`;
+
+        q.options.forEach((opt, optIdx) => {
+          const id = `q${idx}_${optIdx}`;
+          card.insertAdjacentHTML(
+            "beforeend",
+            `<label style="display:block">
+               <input type="radio" name="q${idx}" id="${id}" value="${optIdx}" />
+               ${opt}
+             </label>`
+          );
+        });
+
+        examForm.appendChild(card);
+      });
+    }
+
+    /* ---------------- Temporizador ---------------- */
+    let timeLeft = EXAM_DURATION_MINUTES * 60; // segundos
+
+    function startTimer() {
+      updateTimer();
+      const interval = setInterval(() => {
+        timeLeft--;
+        updateTimer();
+        if (timeLeft <= 0) {
+          clearInterval(interval);
+          submitExam(); // envía automáticamente al terminar el tiempo
+        }
+      }, 1000);
+    }
+
+    function updateTimer() {
+      const m = String(Math.floor(timeLeft / 60)).padStart(2, "0");
+      const s = String(timeLeft % 60).padStart(2, "0");
+      timerEl.textContent = `Tiempo restante: ${m}:${s}`;
+    }
+
+    /* ---------------- Evaluación ---------------- */
+    function submitExam() {
+      // Evitar dobles envíos
+      if (submitBtn.disabled) return;
+
+      submitBtn.disabled = true;
+
+      let correct = 0;
+      const userAnswers = [];
+
+      questions.forEach((q, idx) => {
+        const selected = document.querySelector(`input[name="q${idx}"]:checked`);
+        const answerIdx = selected ? parseInt(selected.value) : null;
+        userAnswers.push(answerIdx);
+        if (answerIdx === q.answer) correct++;
+      });
+
+      const percent = (correct / questions.length) * 100;
+      resultsEl.innerHTML = `
+        <h2>Resultados</h2>
+        <p>Puntaje: <strong>${correct} / ${questions.length}</strong> (${percent.toFixed(1)} %)</p>
+        <h3>Respuestas correctas</h3>
+        <ol>
+          ${questions.map(q => `<li>${q.options[q.answer]}</li>`).join("")}
+        </ol>
+      `;
+      resultsEl.classList.remove("hidden");
+
+      saveResult(percent);
+    }
+
+    /* ------- Almacenar historial en localStorage ------- */
+    function saveResult(score) {
+      const history = JSON.parse(localStorage.getItem("examHistory") || "[]");
+      history.push({ date: new Date().toISOString(), score });
+      localStorage.setItem("examHistory", JSON.stringify(history));
+    }
+
+    /* ---------------- Inicio ---------------- */
+    renderExam();
+    startTimer();
+    submitBtn.addEventListener("click", e => {
+      e.preventDefault(); // evita recargar la página
+      submitExam();
+    });
+  </script>
+</body>
+</html>
